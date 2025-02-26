@@ -31,6 +31,53 @@ app.get('/', (req, res) => {
 })
 
 //////////////////////////////////////////////////////////
+// REGISTRO
+//////////////////////////////////////////////////////////
+app.post('/registro', (req, res) => {
+    const usuario = {
+        usuario: req.body.usuario,
+        contrasena: req.body.contrasena
+    }
+
+    const query = `INSERT INTO usuarios SET ?`
+    conexion.query(query, usuario, (error) => {
+        if(error) return console.error(error.message);
+        var objeto = {}
+        objeto.codigo = "200"
+        objeto.mensaje = "Se inserto correctamente el usuario"
+        objeto.resultado = ""
+        res.send(objeto);
+    })
+});
+
+//////////////////////////////////////////////////////////
+// LOGIN
+//////////////////////////////////////////////////////////
+app.post('/login', (req, res) => {
+    const usuario = {
+        usuario: req.body.usuario,
+        contrasena: req.body.contrasena
+    }
+
+    const query = `SELECT * FROM usuarios WHERE usuario='${usuario.usuario}' AND contrasena='${usuario.contrasena}'`
+    conexion.query(query, usuario, (error, resultado) => {
+        if(error) return console.error(error.message)
+        var objeto = {}
+        if(resultado.length > 0){
+            objeto.codigo = "200"
+            objeto.mensaje = `Bienvenido al sistema: ${usuario.usuario}`
+            objeto.resultado = ""
+        } else {
+            objeto.codigo = "400"
+            objeto.mensaje = "No hay registro con esa información"
+            objeto.resultado = ""
+        }
+
+        res.json(objeto);
+    })
+});
+
+//////////////////////////////////////////////////////////
 // PROVEEDORES
 //////////////////////////////////////////////////////////
 
@@ -153,7 +200,7 @@ app.get('/productos/:codProducto', (req, res) => {
             objeto.resultado = resultado
             res.json(objeto);
         } else {
-            objeto.codigo = "200"
+            objeto.codigo = "400"
             objeto.mensaje = "No hay registro con ese código"
             objeto.resultado = []
             res.send(objeto);
@@ -219,7 +266,11 @@ app.delete('/productos/delete/:codProducto', (req, res) => {
     const query = `DELETE FROM productos WHERE codProducto='${codProducto}'`
     conexion.query(query, (error) => {
         if(error) return console.error(error.message);
-        res.send(`Se eliminó correctamente el producto`);
+        var objeto = {}
+        objeto.codigo = "200"
+        objeto.mensaje = "Se eliminó correctamente el producto"
+        objeto.resultado = []
+        res.send(objeto);
     })
 });
 
@@ -230,6 +281,29 @@ app.delete('/productos/delete/:codProducto', (req, res) => {
 //////////////////////////////////////////////////////////
 // VENTAS
 //////////////////////////////////////////////////////////
+
+// CONSULT VENTA DEVOLUCION
+app.get('/venta', (req, res) => {
+    //const {idVenta} = req.paramsç
+    const idVenta = req.query.id_venta
+
+    const query = `SELECT * FROM ventas WHERE idVenta='${idVenta}'`
+    conexion.query(query, (error, resultado) => {
+        if(error) return console.error(error.message)
+        var objeto = {}
+        if(resultado.length > 0) {
+            objeto.codigo = "200"
+            objeto.mensaje = "Producto"
+            objeto.resultado = resultado
+            res.json(objeto)
+        } else {
+            objeto.codigo = "400"
+            objeto.mensaje = "No hay registro con ese código"
+            objeto.resultado = []
+            res.send(objeto)
+        }
+    })
+});
 
 // CONSULT VENTAS
 app.get('/ventas', (req, res) => {
@@ -247,7 +321,7 @@ app.get('/ventas', (req, res) => {
             resultado.forEach(element => {
                 arrayProds = []
 
-                var arrComa = element.datosProdVenta.split(",")
+                var arrComa = element.datosProdVenta.split("_")
                 arrComa.forEach(element => {
                     var arrGuion = element.split("_")
 
@@ -279,6 +353,7 @@ app.get('/ventas', (req, res) => {
         }
     })
 });
+
 // CONSULT VENTA PERIODO
 app.get('/ventas/periodo', (req, res) => {
     const fechaInicio = req.query.fechaInicio
@@ -339,20 +414,151 @@ app.post('/ventas/add', (req, res) => {
         idVenta: req.body.idVenta,
         datosProdVenta: req.body.codProductos,
         fechaVenta: req.body.fechaVenta,
-        total: req.body.total,
+        total: req.body.total
+    }
+
+    console.log(venta.datosProdVenta)
+
+    var aux = venta.datosProdVenta.replace(',', '_')
+    var productos = aux.split('_')
+    //console.log(productos)
+    
+    var objeto = {}
+    for(var i = 0 ; i < productos.length ; i+=3) {
+        //console.log(productos[i])
+        //console.log(productos[i+1])
+        
+        const updateAlmacen = `UPDATE productos SET almacen=almacen-'${productos[i+1]}' WHERE codProducto='${productos[i]}'`
+        conexion.query(updateAlmacen, (error) => {
+            if(error) return console.error(error.message);
+        })
     }
 
     const query = `INSERT INTO ventas SET ?`
     conexion.query(query, venta, (error) => {
         if(error) return console.error(error.message);
+
         var objeto = {}
         objeto.codigo = "200"
         objeto.mensaje = "Se inserto correctamente la venta"
         objeto.resultado = []
+
         res.send(objeto);
     })
 });
 
 //////////////////////////////////////////////////////////
 // END VENTAS
+//////////////////////////////////////////////////////////
+
+
+
+
+
+//////////////////////////////////////////////////////////
+// DEVOLUCIONES
+//////////////////////////////////////////////////////////
+// CONSULT DEVOLUCIONES PERIODO
+app.get('/devoluciones/periodo', (req, res) => {
+    const fechaInicio = req.query.fechaInicio
+    const fechaFinal = req.query.fechaFinal
+
+    const query = `SELECT * FROM devoluciones WHERE fechaVenta BETWEEN '${fechaInicio}' AND '${fechaFinal}' ORDER BY fechaVenta ASC;`
+    conexion.query(query, (error, resultado) => {
+        var respuesta = {}
+        var arrayVentas = []
+        var arrayProds = []
+
+        if(resultado.length > 0){
+            respuesta.codigo = "200"
+            respuesta.mensaje = "Devoluciones"
+            
+            resultado.forEach(element => {
+                arrayProds = []
+
+                var arrComa = element.datosProdVenta.split(",")
+                arrComa.forEach(element => {
+                    var arrGuion = element.split("_")
+
+                    arrayProds.push(
+                        {
+                            codProducto: arrGuion[0],
+                            cantidad: arrGuion[1],
+                            precioUnidad: arrGuion[2]
+                        }
+                    )
+                })
+
+                arrayVentas.push(
+                    {
+                        idVenta: element.idVenta,
+                        totalVenta: element.total,
+                        fechaVenta: element.fechaVenta,
+                        prodsVenta: arrayProds,
+                        total: element.total,
+                        fechaDevolucion: element.fechaDevolucion
+                    }
+                )
+            });
+            respuesta.resultado = arrayVentas
+            res.send(respuesta)
+        } else {
+            respuesta.codigo = "200"
+            respuesta.mensaje = "No hay devoluciones en ese periodo de tiempo"
+            respuesta.resultado = []
+            res.send(respuesta);
+        }
+
+        //console.log(respuesta)
+    })
+});
+
+app.get('/devoluciones', (req, res) => {
+    const idVenta = req.query.id_venta
+ 
+    const queryConsult = `SELECT * FROM ventas WHERE idVenta='${idVenta}'`
+    conexion.query(queryConsult, (error, resultado) => {
+        if(error) return console.error(error.message)
+        var resConsultVenta = {}
+        if(resultado.length > 0) {
+            resConsultVenta = resultado
+
+            const hoy = new Date()
+            const fechaHoy = `${hoy.getFullYear()}-${hoy.getMonth()+1}-${hoy.getDate()}`
+
+            resConsultVenta[0].fechaDevolucion = fechaHoy
+
+            //res.json(resConsultVenta[0].datosProdVenta)
+
+            const arrProductos = resConsultVenta[0].datosProdVenta.split("_")
+            //res.json(resConsultVenta[0].datosProdVenta)
+            for(var i = 0 ; i < arrProductos.length ; i+=3) {
+                const updateAlmacen = `UPDATE productos SET almacen=almacen+'${arrProductos[i+1]}' WHERE codProducto='${arrProductos[i]}'`
+                conexion.query(updateAlmacen, (error) => {
+                    if(error) return console.error(error.message);
+                })
+            }
+
+            const queryAddDevoluciones = `INSERT INTO devoluciones SET ?`
+            conexion.query(queryAddDevoluciones, resConsultVenta, (error) => {
+                if(error) return console.error(error.message);
+
+                const queryDeleteVenta = `DELETE FROM ventas WHERE idVenta='${idVenta}'`
+                conexion.query(queryDeleteVenta, (error) => {
+                if(error) return console.error(error.message)
+                var objeto = {}
+                objeto.codigo = "200"
+                objeto.mensaje = "Se registro correctamente la devolución"
+                objeto.resultado = []
+
+                res.send(objeto);
+                })
+            })
+        }
+    })
+});
+
+
+//////////////////////////////////////////////////////////
+// END DEVOLUCIONES
 //////////////////////////////////////////////////////////

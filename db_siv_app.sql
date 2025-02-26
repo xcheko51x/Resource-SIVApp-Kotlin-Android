@@ -1,5 +1,10 @@
 CREATE DATABASE db_siv_app;
 
+CREATE TABLE `usuarios` (
+  `usuario` varchar(50) PRIMARY KEY,
+  `contrasena` varchar(10) NOT NULL
+);
+
 CREATE TABLE `productos` (
   `codProducto` varchar(50) NOT NULL,
   `nomProducto` text NOT NULL,
@@ -35,6 +40,14 @@ CREATE TABLE `ventas` (
   `total` double NOT NULL
 );
 
+create table `devoluciones`(
+    idVenta varchar(100) not null,
+    datosProdVenta text not null,
+    fechaVenta date not null,
+    total double not null,
+    fechaDevolucion date not null
+);
+
 
 INSERT INTO `ventas` (`idVenta`, `datosProdVenta`, `fechaVenta`, `total`) VALUES
 ('1668111141543', '3086129999675_1_30.0,7501020607048_1_80.0', '2023-04-02', 110),
@@ -53,6 +66,9 @@ ALTER TABLE `proveedores`
 
 
 ALTER TABLE `ventas`
+  ADD PRIMARY KEY (`idVenta`);
+
+  ALTER TABLE `devoluciones`
   ADD PRIMARY KEY (`idVenta`);
 
 
